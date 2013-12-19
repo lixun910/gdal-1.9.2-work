@@ -135,6 +135,16 @@ CPLErr OGROCIStatement::Prepare( const char *pszSQLStatement )
         return CE_Failure;
 
 /* -------------------------------------------------------------------- */
+/*      Xun: set prefetch count.                                        */
+/* -------------------------------------------------------------------- */
+    int prefetch_rows = 2000;
+    if( poSession->Failed(
+        OCIAttrSet( hStatement, OCI_HTYPE_STMT, (void*)&prefetch_rows,
+                    sizeof(int), OCI_ATTR_PREFETCH_ROWS, 
+                    poSession->hError ) ))
+        return CE_Failure;
+
+/* -------------------------------------------------------------------- */
 /*      Prepare the statement.                                          */
 /* -------------------------------------------------------------------- */
     if( poSession->Failed(

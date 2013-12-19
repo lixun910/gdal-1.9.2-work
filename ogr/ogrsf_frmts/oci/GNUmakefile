@@ -1,6 +1,9 @@
 
 
 include ../../../GDALmake.opt
+GDAL_INCLUDE += -I$(ORACLE_HOME)/sdk/include
+LNK_FLAGS += -arch x86_64
+EXTRA_LIBS += -L$(ORACLE_HOME)/lib -lclntsh -lnnz11
 
 OBJ	=	oci_utils.o ogrocisession.o ogrocistatement.o \
 		ogrocidriver.o ogrocidatasource.o ogrocilayer.o \
@@ -25,5 +28,5 @@ fastload:	fastload.cpp
 plugin: $(PLUGIN_SO)
 
 $(PLUGIN_SO):	$(OBJ)
-	gcc -shared $(LNK_FLAGS) $(OBJ) $(CONFIG_LIBS_INS) $(EXTRA_LIBS) \
+	g++ -shared $(LNK_FLAGS) $(OBJ) $(CONFIG_LIBS_INS) $(EXTRA_LIBS) \
 		-o $(PLUGIN_SO)
