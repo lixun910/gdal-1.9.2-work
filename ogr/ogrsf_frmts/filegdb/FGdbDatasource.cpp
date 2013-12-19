@@ -1,5 +1,5 @@
 /******************************************************************************
- * $Id: FGdbDatasource.cpp 23394 2011-11-19 19:20:12Z rouault $
+ * $Id: FGdbDatasource.cpp 26310 2013-08-13 19:54:26Z rouault $
  *
  * Project:  OpenGIS Simple Features Reference Implementation
  * Purpose:  Implements FileGDB OGR Datasource.
@@ -35,7 +35,7 @@
 #include "gdal.h"
 #include "FGdbUtils.h"
 
-CPL_CVSID("$Id: FGdbDatasource.cpp 23394 2011-11-19 19:20:12Z rouault $");
+CPL_CVSID("$Id: FGdbDatasource.cpp 26310 2013-08-13 19:54:26Z rouault $");
 
 using std::vector;
 using std::wstring;
@@ -44,9 +44,9 @@ using std::wstring;
 /*                          FGdbDataSource()                           */
 /************************************************************************/
 
-FGdbDataSource::FGdbDataSource():
+FGdbDataSource::FGdbDataSource(FGdbDriver* poDriver):
 OGRDataSource(),
-m_pszName(0), m_pGeodatabase(NULL)
+m_poDriver(poDriver), m_pszName(0), m_pGeodatabase(NULL)
 {
 }
 
@@ -55,18 +55,13 @@ m_pszName(0), m_pGeodatabase(NULL)
 /************************************************************************/
 
 FGdbDataSource::~FGdbDataSource()
-{   
-    CPLFree( m_pszName );
-
+{
     size_t count = m_layers.size();
     for(size_t i = 0; i < count; ++i )
         delete m_layers[i];
 
-    if (m_pGeodatabase)
-    {
-        ::CloseGeodatabase(*m_pGeodatabase);
-        delete m_pGeodatabase;
-    }
+    m_poDriver->Release( m_pszName );
+    CPLFree( m_pszName );
 }
 
 
@@ -336,4 +331,168 @@ FGdbDataSource::CreateLayer( const char * pszLayerName,
     m_layers.push_back(pLayer);
 
     return pLayer;  
+}
+
+
+/************************************************************************/
+/*                   OGRFGdbSingleFeatureLayer                          */
+/************************************************************************/
+
+class OGRFGdbSingleFeatureLayer : public OGRLayer
+{
+  private:
+    char               *pszVal;
+    OGRFeatureDefn     *poFeatureDefn;
+    int                 iNextShapeId;
+
+  public:
+                        OGRFGdbSingleFeatureLayer( const char* pszLayerName,
+                                                   const char *pszVal );
+                        ~OGRFGdbSingleFeatureLayer();
+
+    virtual void        ResetReading() { iNextShapeId = 0; }
+    virtual OGRFeature *GetNextFeature();
+    virtual OGRFeatureDefn *GetLayerDefn() { return poFeatureDefn; }
+    virtual int         TestCapability( const char * ) { return FALSE; }
+};
+
+/************************************************************************/
+/*                    OGRFGdbSingleFeatureLayer()                       */
+/************************************************************************/
+
+OGRFGdbSingleFeatureLayer::OGRFGdbSingleFeatureLayer(const char* pszLayerName,
+                                                     const char *pszVal )
+{
+    poFeatureDefn = new OGRFeatureDefn( pszLayerName );
+    poFeatureDefn->Reference();
+    OGRFieldDefn oField( "FIELD_1", OFTString );
+    poFeatureDefn->AddFieldDefn( &oField );
+
+    iNextShapeId = 0;
+    this->pszVal = pszVal ? CPLStrdup(pszVal) : NULL;
+}
+
+/************************************************************************/
+/*                   ~OGRFGdbSingleFeatureLayer()                       */
+/************************************************************************/
+
+OGRFGdbSingleFeatureLayer::~OGRFGdbSingleFeatureLayer()
+{
+    if( poFeatureDefn != NULL )
+        poFeatureDefn->Release();
+    CPLFree(pszVal);
+}
+
+
+/************************************************************************/
+/*                           GetNextFeature()                           */
+/************************************************************************/
+
+OGRFeature * OGRFGdbSingleFeatureLayer::GetNextFeature()
+{
+    if (iNextShapeId != 0)
+        return NULL;
+
+    OGRFeature* poFeature = new OGRFeature(poFeatureDefn);
+    if (pszVal)
+        poFeature->SetField(0, pszVal);
+    poFeature->SetFID(iNextShapeId ++);
+    return poFeature;
+}
+
+/************************************************************************/
+/*                              ExecuteSQL()                            */
+/************************************************************************/
+
+OGRLayer * FGdbDataSource::ExecuteSQL( const char *pszSQLCommand,
+                                       OGRGeometry *poSpatialFilter,
+                                       const char *pszDialect )
+
+{
+    if ( pszDialect != NULL && EQUAL(pszDialect, "OGRSQL") )
+        return OGRDataSource::ExecuteSQL( pszSQLCommand,
+                                          poSpatialFilter,
+                                          pszDialect );
+
+/* -------------------------------------------------------------------- */
+/*      Special case GetLayerDefinition                                 */
+/* -------------------------------------------------------------------- */
+    if (EQUALN(pszSQLCommand, "GetLayerDefinition ", strlen("GetLayerDefinition ")))
+    {
+        FGdbLayer* poLayer = (FGdbLayer*) GetLayerByName(pszSQLCommand + strlen("GetLayerDefinition "));
+        if (poLayer)
+        {
+            char* pszVal = NULL;
+            poLayer->GetLayerXML(&pszVal);
+            OGRLayer* poRet = new OGRFGdbSingleFeatureLayer( "LayerDefinition", pszVal );
+            CPLFree(pszVal);
+            return poRet;
+        }
+        else
+            return NULL;
+    }
+
+/* -------------------------------------------------------------------- */
+/*      Special case GetLayerMetadata                                   */
+/* -------------------------------------------------------------------- */
+    if (EQUALN(pszSQLCommand, "GetLayerMetadata ", strlen("GetLayerMetadata ")))
+    {
+        FGdbLayer* poLayer = (FGdbLayer*) GetLayerByName(pszSQLCommand + strlen("GetLayerMetadata "));
+        if (poLayer)
+        {
+            char* pszVal = NULL;
+            poLayer->GetLayerMetadataXML(&pszVal);
+            OGRLayer* poRet = new OGRFGdbSingleFeatureLayer( "LayerMetadata", pszVal );
+            CPLFree(pszVal);
+            return poRet;
+        }
+        else
+            return NULL;
+    }
+
+    /* TODO: remove that workaround when the SDK has finally a decent */
+    /* SQL support ! */
+    if( EQUALN(pszSQLCommand, "SELECT ", 7) && pszDialect == NULL )
+    {
+        CPLDebug("FGDB", "Support for SELECT is known to be partially "
+                         "non-compliant with FileGDB SDK API v1.2.\n"
+                         "So for now, we use default OGR SQL engine. "
+                         "Explicitely specify -dialect FileGDB\n"
+                         "to use the SQL engine from the FileGDB SDK API");
+        return OGRDataSource::ExecuteSQL( pszSQLCommand,
+                                        poSpatialFilter,
+                                        pszDialect );
+    }
+
+/* -------------------------------------------------------------------- */
+/*      Run the SQL                                                     */
+/* -------------------------------------------------------------------- */
+    EnumRows* pEnumRows = new EnumRows;
+    long hr;
+    if (FAILED(hr = m_pGeodatabase->ExecuteSQL(
+                                StringToWString(pszSQLCommand), true, *pEnumRows)))
+    {
+        GDBErr(hr, CPLSPrintf("Failed at executing '%s'", pszSQLCommand));
+        delete pEnumRows;
+        return NULL;
+    }
+
+    if( EQUALN(pszSQLCommand, "SELECT ", 7) )
+    {
+        return new FGdbResultLayer(this, pszSQLCommand, pEnumRows);
+    }
+    else
+    {
+        delete pEnumRows;
+        return NULL;
+    }
+}
+
+/************************************************************************/
+/*                           ReleaseResultSet()                         */
+/************************************************************************/
+
+void FGdbDataSource::ReleaseResultSet( OGRLayer * poResultsSet )
+{
+    delete poResultsSet;
 }
