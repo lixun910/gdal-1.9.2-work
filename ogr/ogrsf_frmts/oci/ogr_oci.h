@@ -312,6 +312,7 @@ public:
     virtual OGRSpatialReference *GetSpatialRef() { return poSRS; }
     virtual OGRErr      CreateField( OGRFieldDefn *poField,
                                      int bApproxOK = TRUE );
+    virtual OGRErr      DeleteField( int iFieldToDelete );
 
     // following methods are not base class overrides
     void                SetOptions( char ** );
