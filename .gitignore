@@ -1,0 +1,13 @@
+*.o
+*.back
+*.opt
+*.lo
+*.dylib
+*.a
+*.so
+*.opt
+*.status
+libtool
+*.la
+.libs
+apps
