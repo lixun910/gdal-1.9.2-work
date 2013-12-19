@@ -259,6 +259,24 @@ OGRCSVLayer::OGRCSVLayer( const char *pszLayerNameIn,
         VSIRewindL( fpCSV );
     }
 
+
+/* -------------------------------------------------------------------- */
+/*      Search a csvt file for types                                */
+/* -------------------------------------------------------------------- */
+    char** papszFieldTypes = NULL;
+    if (!bNew) {
+        char* dname = strdup(CPLGetDirname(pszFilename));
+        char* fname = strdup(CPLGetBasename(pszFilename));
+        VSILFILE* fpCSVT = VSIFOpenL(CPLFormFilename(dname, fname, ".csvt"), "r");
+        free(dname);
+        free(fname);
+        if (fpCSVT!=NULL) {
+            VSIRewindL(fpCSVT);
+            papszFieldTypes = OGRCSVReadParseLineL(fpCSVT, ',', FALSE);
+            VSIFCloseL(fpCSVT);
+        }
+    }
+ 
 /* -------------------------------------------------------------------- */
 /*      Check if the first record seems to be field definitions or      */
 /*      not.  We assume it is field definitions if none of the          */
@@ -311,6 +329,58 @@ OGRCSVLayer::OGRCSVLayer( const char *pszLayerNameIn,
                                               (CSLT_HONOURSTRINGS |
                                                CSLT_ALLOWEMPTYTOKENS));
             nFieldCount = CSLCount( papszTokens );
+        }
+
+        if ( papszFieldTypes == NULL )
+        {
+            /* detect field type from second line of the file */
+            char **papszTmpTokens = NULL;
+            int nFieldCount=0, iField;
+            CPLValueType eFieldType;
+
+            pszLine = CPLReadLineL( fpCSV );
+            if ( pszLine != NULL )
+            {
+                 
+                /* Detect and remove UTF-8 BOM marker if found (#4623) */
+                if (pszLine[0] == (char)0xEF &&
+                    pszLine[1] == (char)0xBB &&
+                    pszLine[2] == (char)0xBF)
+                {
+                    pszLine += 3;
+                }
+
+                /* tokenize the strings and preserve quotes, so we can separate string from numeric */
+                /* this is only used in the test for bHasFeldNames (bug #4361) */
+                papszTmpTokens = CSLTokenizeString2( pszLine, szDelimiter, 
+                                                  (CSLT_HONOURSTRINGS |
+                                                   CSLT_ALLOWEMPTYTOKENS |
+                                                   CSLT_PRESERVEQUOTES) );
+                nFieldCount = CSLCount( papszTmpTokens );
+
+                /* initialize papszFieldTypes */
+                papszFieldTypes = (char **)CPLMalloc((nFieldCount+1)*sizeof(char*));
+                char** papszTmp = papszFieldTypes;
+
+                for( iField = 0; iField < nFieldCount; iField++ )
+                {
+                    eFieldType = CPLGetValueType(papszTmpTokens[iField]);
+                    if ( eFieldType == CPL_VALUE_INTEGER )
+                    {
+                        *papszTmp = CPLStrdup("Integer");
+                    } 
+                    else if ( eFieldType == CPL_VALUE_REAL)  
+                    {
+                        *papszTmp = CPLStrdup("Real");
+                    }
+                    else
+                        *papszTmp = CPLStrdup("String");
+                    papszTmp++;
+                }
+                *papszTmp = NULL;
+                /* tokenize without quotes to get the actual values */
+                CSLDestroy( papszTmpTokens );
+            }
         }
     }
     else
@@ -374,24 +444,6 @@ OGRCSVLayer::OGRCSVLayer( const char *pszLayerNameIn,
         }
     }
 
-
-/* -------------------------------------------------------------------- */
-/*      Search a csvt file for types                                */
-/* -------------------------------------------------------------------- */
-    char** papszFieldTypes = NULL;
-    if (!bNew) {
-        char* dname = strdup(CPLGetDirname(pszFilename));
-        char* fname = strdup(CPLGetBasename(pszFilename));
-        VSILFILE* fpCSVT = VSIFOpenL(CPLFormFilename(dname, fname, ".csvt"), "r");
-        free(dname);
-        free(fname);
-        if (fpCSVT!=NULL) {
-            VSIRewindL(fpCSVT);
-            papszFieldTypes = OGRCSVReadParseLineL(fpCSVT, ',', FALSE);
-            VSIFCloseL(fpCSVT);
-        }
-    }
-    
 
 /* -------------------------------------------------------------------- */
 /*      Build field definitions.                                        */
