@@ -1793,6 +1793,8 @@ static CPLString WFS_EscapeURL(CPLString osURL)
 CPLHTTPResult* OGRWFSDataSource::HTTPFetch( const char* pszURL, char** papszOptions )
 {
     char** papszNewOptions = CSLDuplicate(papszOptions);
+    //XXX for GeoDa 1.5, we set TIMEOUT 300 seconds
+        papszNewOptions = CSLAddNameValue(papszNewOptions, "TIMEOUT", "300");
     if (bUseHttp10)
         papszNewOptions = CSLAddNameValue(papszNewOptions, "HTTP_VERSION", "1.0");
     if (papszHttpOptions)
