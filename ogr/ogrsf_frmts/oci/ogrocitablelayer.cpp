@@ -719,11 +719,6 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
     {
         //if ( !poFeature->IsFieldUpdate(i) ) 
         //    continue;
-        if ( bNeedComma )
-        {
-            strcat( pszCommand+nOffset, ", " );
-            nOffset += strlen(pszCommand+nOffset);
-        }
         
         OGRFieldDefn *poFldDefn = poFeature->GetFieldDefnRef(i);
         const char *pszStrValue = poFeature->GetFieldAsString(i);
@@ -732,6 +727,11 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
         {
             if ( pszStrValue[0] != '\0' )
             {
+                if ( bNeedComma )
+                {
+                    strcat( pszCommand+nOffset, ", " );
+                    nOffset += strlen(pszCommand+nOffset);
+                }
                 sprintf( pszCommand+nOffset, "%s=", poFldDefn->GetNameRef());
                 
                 nOffset += strlen(pszCommand+nOffset);
@@ -754,6 +754,11 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
         }
         else 
         {
+            if ( bNeedComma )
+            {
+                strcat( pszCommand+nOffset, ", " );
+                nOffset += strlen(pszCommand+nOffset);
+            }
             int         iChar;
 
             printf( pszCommand+nOffset, "%s='", poFldDefn->GetNameRef() );
