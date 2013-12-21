@@ -709,7 +709,7 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
     OGROCIStatement     oCmdStatement( poDS->GetSession() );
     unsigned int        nCommandBufSize;;
 
-    nCommandBufSize = 2000;
+    nCommandBufSize = 10000;
     pszCommand = (char *) CPLMalloc(nCommandBufSize);
    
     sprintf( pszCommand, "UPDATE %s SET ", poFeatureDefn->GetName() );
@@ -777,7 +777,7 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
         nOffset += strlen(pszCommand+nOffset);
     }
 
-    pszCommand[ strlen(pszCommand) - 1 ] = 0; /* remove last comma */
+    pszCommand[ strlen(pszCommand) - 1 ] = 0; 
     --nOffset;
     
     sprintf( pszCommand+nOffset, " WHERE \"%s\" = %d", pszFIDName, poFeature->GetFID() );
@@ -789,10 +789,12 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
         //    if ( poFeature->IsFieldUpdate(i) )
         //        poFeature->ResetFieldUpdate(i);
         //}
+        CPLFree( pszCommand );
         return OGRERR_NONE;
     }
-    else
-        return OGRERR_FAILURE;
+    
+    CPLFree( pszCommand );
+    return OGRERR_FAILURE;
     
     /*
     oCmdText.Appendf( strlen(poFeatureDefn->GetName())+strlen(pszFIDName)+100,
