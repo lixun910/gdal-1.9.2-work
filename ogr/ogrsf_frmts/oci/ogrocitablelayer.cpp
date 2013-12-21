@@ -686,7 +686,7 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
         return OGRERR_FAILURE;
     }
 
-    int i, bNeedUpdate = FALSE, bNeedComma = FALSE;
+    int i, bNeedUpdate = FALSE;
    
     //XXX for future only update certain fields
     //for ( i=0 ; i < poFeature->GetFieldCount(); ++i )
@@ -727,11 +727,6 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
         {
             if ( pszStrValue[0] != '\0' )
             {
-                if ( bNeedComma )
-                {
-                    strcat( pszCommand+nOffset, ", " );
-                    nOffset += strlen(pszCommand+nOffset);
-                }
                 sprintf( pszCommand+nOffset, "%s=", poFldDefn->GetNameRef());
                 
                 nOffset += strlen(pszCommand+nOffset);
@@ -739,26 +734,18 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
                 if( poFldDefn->GetWidth() > 0 && bPreservePrecision
                     && (int) strlen(pszStrValue) > poFldDefn->GetWidth() )
                 {
-                    strcat( pszCommand+nOffset, "NULL" );
+                    strcat( pszCommand+nOffset, "NULL," );
                     ReportTruncation( poFldDefn );
                 }
                 else
                 {
-                    sprintf( pszCommand+nOffset, "%s" , pszStrValue );
+                    sprintf( pszCommand+nOffset, "%s," , pszStrValue );
                     nOffset += strlen(pszCommand+nOffset);
                 }
-                bNeedComma = TRUE;
             }
-            else
-                bNeedComma = FALSE;
         }
         else 
         {
-            if ( bNeedComma )
-            {
-                strcat( pszCommand+nOffset, ", " );
-                nOffset += strlen(pszCommand+nOffset);
-            }
             int         iChar;
 
             printf( pszCommand+nOffset, "%s='", poFldDefn->GetNameRef() );
@@ -784,14 +771,14 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
             }
             pszCommand[nOffset] = '\0';
                 
-            strcat( pszCommand+nOffset, "'" );
-            
-            bNeedComma = TRUE;
+            strcat( pszCommand+nOffset, "'," );
         }
         
         nOffset += strlen(pszCommand+nOffset);
-        
     }
+
+    pszCommand[ strlen(pszCommand) - 1 ] = 0; /* remove last comma */
+    --nOffset;
     
     sprintf( pszCommand+nOffset, " WHERE \"%s\" = %d", pszFIDName, poFeature->GetFID() );
    
