@@ -1134,7 +1134,7 @@ const char *OGRFeature::GetFieldAsString( int iField )
     {
         char    szFormat[64];
 
-        if( poFDefn->GetWidth() != 0 )
+        if( poFDefn->GetWidth() != 0 && poFDefn->GetPrecision() >= 0 )
         {
             snprintf( szFormat, sizeof(szFormat), "%%%d.%df",
                       poFDefn->GetWidth(), poFDefn->GetPrecision() );
