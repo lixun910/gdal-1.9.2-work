@@ -705,9 +705,8 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
 /*      non-existing feature may be OK.                                 */
 /* -------------------------------------------------------------------- */
     char                *pszCommand;
-    OGROCIStringBuf     oCmdText;
     OGROCIStatement     oCmdStatement( poDS->GetSession() );
-    unsigned int        nCommandBufSize;;
+    unsigned int        nCommandBufSize;
 
     nCommandBufSize = 10000;
     pszCommand = (char *) CPLMalloc(nCommandBufSize);
@@ -719,7 +718,6 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
     {
         //if ( !poFeature->IsFieldUpdate(i) ) 
         //    continue;
-        
         OGRFieldDefn *poFldDefn = poFeature->GetFieldDefnRef(i);
         const char *pszStrValue = poFeature->GetFieldAsString(i);
         if( poFldDefn->GetType() == OFTInteger
@@ -728,20 +726,10 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
             if ( pszStrValue[0] != '\0' )
             {
                 sprintf( pszCommand+nOffset, "%s=", poFldDefn->GetNameRef());
-                
                 nOffset += strlen(pszCommand+nOffset);
                 
-                if( poFldDefn->GetWidth() > 0 && bPreservePrecision
-                    && (int) strlen(pszStrValue) > poFldDefn->GetWidth() )
-                {
-                    strcat( pszCommand+nOffset, "NULL," );
-                    ReportTruncation( poFldDefn );
-                }
-                else
-                {
-                    sprintf( pszCommand+nOffset, "%s," , pszStrValue );
-                    nOffset += strlen(pszCommand+nOffset);
-                }
+                sprintf( pszCommand+nOffset, "%s," , pszStrValue );
+                nOffset += strlen(pszCommand+nOffset);
             }
         }
         else 
@@ -749,18 +737,10 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
             int         iChar;
 
             printf( pszCommand+nOffset, "%s='", poFldDefn->GetNameRef() );
-                
             nOffset += strlen(pszCommand+nOffset);
                 
             for( iChar = 0; pszStrValue[iChar] != '\0'; iChar++ )
             {
-                if( poFldDefn->GetWidth() != 0 && bPreservePrecision
-                    && iChar >= poFldDefn->GetWidth() )
-                {
-                    ReportTruncation( poFldDefn );
-                    break;
-                }
-
                 if( pszStrValue[iChar] == '\'' )
                 {
                     pszCommand[nOffset++] = '\'';
@@ -770,7 +750,6 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
                     pszCommand[nOffset++] = pszStrValue[iChar];
             }
             pszCommand[nOffset] = '\0';
-                
             strcat( pszCommand+nOffset, "'," );
         }
         
@@ -795,18 +774,6 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
     
     CPLFree( pszCommand );
     return OGRERR_FAILURE;
-    
-    /*
-    oCmdText.Appendf( strlen(poFeatureDefn->GetName())+strlen(pszFIDName)+100,
-                      "DELETE FROM %s WHERE \"%s\" = %d",
-                      poFeatureDefn->GetName(), 
-                      pszFIDName, 
-                      poFeature->GetFID() );
-
-    oCmdStatement.Execute( oCmdText.GetString() );
-
-    return CreateFeature( poFeature );
-     */
 }
 
 /************************************************************************/

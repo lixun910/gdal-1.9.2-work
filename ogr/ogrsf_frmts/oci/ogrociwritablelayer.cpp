@@ -267,25 +267,25 @@ OGRErr OGROCIWritableLayer::CreateField( OGRFieldDefn *poFieldIn, int bApproxOK 
 /* -------------------------------------------------------------------- */
     if( oField.GetType() == OFTInteger )
     {
-        if( bPreservePrecision && oField.GetWidth() != 0 )
-            sprintf( szFieldType, "NUMBER(%d)", oField.GetWidth() );
-        else
+        //if( bPreservePrecision && oField.GetWidth() != 0 )
+        //    sprintf( szFieldType, "NUMBER(%d)", oField.GetWidth() );
+        //else
             strcpy( szFieldType, "INTEGER" );
     }
     else if( oField.GetType() == OFTReal )
     {
-        if( bPreservePrecision && oField.GetWidth() != 0 )
-            sprintf( szFieldType, "NUMBER(%d,%d)", 
-                     oField.GetWidth(), oField.GetPrecision() );
-        else
+        //if( bPreservePrecision && oField.GetWidth() != 0 )
+        //    sprintf( szFieldType, "NUMBER(%d,%d)", 
+        //             oField.GetWidth(), oField.GetPrecision() );
+        //else
             strcpy( szFieldType, "FLOAT(126)" );
     }
     else if( oField.GetType() == OFTString )
     {
-        if( oField.GetWidth() == 0 || !bPreservePrecision )
+        //if( oField.GetWidth() == 0 || !bPreservePrecision )
             strcpy( szFieldType, "VARCHAR2(2047)" );
-        else
-            sprintf( szFieldType, "VARCHAR2(%d)", oField.GetWidth() );
+        //else
+        //    sprintf( szFieldType, "VARCHAR2(%d)", oField.GetWidth() );
     }
     else if( bApproxOK )
     {
