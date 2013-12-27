@@ -181,9 +181,12 @@ class CPL_DLL OGRFeature
     OGRField            *pauFields;
 
   protected: 
+    long                nFields;
     char *              m_pszStyleString;
     OGRStyleTable       *m_poStyleTable;
     char *              m_pszTmpFieldValue;
+    
+    void                UpdateFields();
     
   public:
                         OGRFeature( OGRFeatureDefn * );

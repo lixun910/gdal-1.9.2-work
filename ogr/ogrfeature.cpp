@@ -64,11 +64,12 @@ OGRFeature::OGRFeature( OGRFeatureDefn * poDefnIn )
     nFID = OGRNullFID;
     
     poGeometry = NULL;
-
+    // record how many fields were created in original layer, in case
+    // we can resize pauFields when adding new columns
+    nFields = poDefn->GetFieldCount();
     // we should likely be initializing from the defaults, but this will
     // usually be a waste. 
-    pauFields = (OGRField *) CPLCalloc( poDefn->GetFieldCount(),
-                                        sizeof(OGRField) );
+    pauFields = (OGRField *) CPLCalloc( nFields, sizeof(OGRField) );
 
     for( int i = 0; i < poDefn->GetFieldCount(); i++ )
     {
@@ -1740,6 +1741,40 @@ int OGR_F_GetFieldAsDateTime( OGRFeatureH hFeat, int iField,
 /************************************************************************/
 
 /**
+ * XXX
+ */
+void OGRFeature::UpdateFields()
+
+{
+    // resize pauFields if needed (when add new column)
+    
+    if ( nFields < poDefn->GetFieldCount() )
+    {
+        OGRField *new_pauFields = (OGRField *) CPLRealloc( pauFields,
+                                 poDefn->GetFieldCount() * sizeof(OGRField) );
+        if ( new_pauFields == NULL )
+        {
+            CPLError(CE_Failure, CPLE_OutOfMemory,
+                     "Could not allocate memory for new field");
+            return;
+        }
+        
+        pauFields = new_pauFields;
+     
+        for( int i = nFields; i < poDefn->GetFieldCount(); i++ )
+        {
+            pauFields[i].Set.nMarker1 = OGRUnsetMarker;
+            pauFields[i].Set.nMarker2 = OGRUnsetMarker;
+        }
+    }
+    
+}
+
+/************************************************************************/
+/*                              SetField()                              */
+/************************************************************************/
+
+/**
  * \brief Set field to integer value. 
  *
  * OFTInteger and OFTReal fields will be set directly.  OFTString fields
@@ -1756,8 +1791,10 @@ int OGR_F_GetFieldAsDateTime( OGRFeatureH hFeat, int iField,
 void OGRFeature::SetField( int iField, int nValue )
 
 {
+    UpdateFields();
+    
     OGRFieldDefn        *poFDefn = poDefn->GetFieldDefn( iField );
-
+    
     if( poFDefn == NULL )
         return;
 
@@ -1842,6 +1879,8 @@ void OGR_F_SetFieldInteger( OGRFeatureH hFeat, int iField, int nValue )
 void OGRFeature::SetField( int iField, double dfValue )
 
 {
+    UpdateFields();
+    
     OGRFieldDefn        *poFDefn = poDefn->GetFieldDefn( iField );
 
     if( poFDefn == NULL )
@@ -1927,6 +1966,8 @@ void OGR_F_SetFieldDouble( OGRFeatureH hFeat, int iField, double dfValue )
 void OGRFeature::SetField( int iField, const char * pszValue )
 
 {
+    UpdateFields();
+    
     OGRFieldDefn        *poFDefn = poDefn->GetFieldDefn( iField );
 
     if( poFDefn == NULL )
@@ -2325,6 +2366,8 @@ void OGRFeature::SetField( int iField, int nYear, int nMonth, int nDay,
                            int nTZFlag )
 
 {
+    UpdateFields();
+    
     OGRFieldDefn        *poFDefn = poDefn->GetFieldDefn( iField );
 
     if( poFDefn == NULL )
@@ -2399,6 +2442,8 @@ void OGR_F_SetFieldDateTime( OGRFeatureH hFeat, int iField,
 void OGRFeature::SetField( int iField, OGRField * puValue )
 
 {
+    UpdateFields();
+    
     OGRFieldDefn        *poFDefn = poDefn->GetFieldDefn( iField );
 
     if( poFDefn == NULL )

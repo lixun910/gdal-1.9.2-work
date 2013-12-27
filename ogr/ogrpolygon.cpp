@@ -92,7 +92,8 @@ void OGRPolygon::empty()
         {
             delete papoRings[i];
         }
-        OGRFree( papoRings );
+        //OGRFree( papoRings );
+        VSIFree( papoRings );
     }
 
     papoRings = NULL;
@@ -384,7 +385,8 @@ OGRErr OGRPolygon::importFromWkb( unsigned char * pabyData,
         for( int iRing = 0; iRing < nRingCount; iRing++ )
             delete papoRings[iRing];
 
-        OGRFree( papoRings );
+        //OGRFree( papoRings );
+        VSIFree( papoRings );
         papoRings = NULL;
     }
     
