@@ -1766,6 +1766,7 @@ void OGRFeature::UpdateFields()
             pauFields[i].Set.nMarker1 = OGRUnsetMarker;
             pauFields[i].Set.nMarker2 = OGRUnsetMarker;
         }
+        nFields = poDefn->GetFieldCount();
     }
     
 }
