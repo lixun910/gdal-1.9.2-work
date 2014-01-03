@@ -748,6 +748,71 @@ int OGR_F_IsFieldSet( OGRFeatureH hFeat, int iField )
 }
 
 /************************************************************************/
+/*                             DeleteField()                             */
+/************************************************************************/
+
+/**
+ * \brief XXX
+ *
+ * This method is the same as the C function OGR_F_DeleteField().
+ *
+ * @param iField the field to unset.
+ */
+
+OGRErr OGRFeature::DeleteField( int iField )
+
+{
+    if (iField < 0 || iField >= nFields)
+        return OGRERR_FAILURE;
+
+
+    OGRFieldDefn        *poFDefn = poDefn->GetFieldDefn( iField );
+
+    if( poFDefn == NULL )
+        return OGRERR_FAILURE;
+
+    if( IsFieldSet(iField) )
+    {
+        switch( poFDefn->GetType() )
+        {
+          case OFTString:
+            if( pauFields[iField].String != NULL )
+                VSIFree( pauFields[iField].String );
+            break;
+
+          case OFTBinary:
+            if( pauFields[iField].Binary.paData != NULL )
+                VSIFree( pauFields[iField].Binary.paData );
+            break;
+
+          case OFTStringList:
+            CSLDestroy( pauFields[iField].StringList.paList );
+            break;
+
+          case OFTIntegerList:
+          case OFTRealList:
+            CPLFree( pauFields[iField].IntegerList.paList );
+            break;
+
+          default:
+            // should add support for wide strings.
+            break;
+        }
+    }
+    
+    if (iField < nFields - 1)
+    {
+        memmove(pauFields + iField,
+                pauFields + iField + 1,
+                (nFields -1 - iField) * sizeof(void*));
+    }
+
+    nFields--;
+    
+    return OGRERR_NONE;
+}
+
+/************************************************************************/
 /*                             UnsetField()                             */
 /************************************************************************/
 

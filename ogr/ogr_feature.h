@@ -211,7 +211,9 @@ class CPL_DLL OGRFeature
     int                 IsFieldSet( int iField ) const;
     
     void                UnsetField( int iField );
-    
+
+    OGRErr              DeleteField( int iField );  
+
     OGRField           *GetRawFieldRef( int i ) { return pauFields + i; }
 
     int                 GetFieldAsInteger( int i );
