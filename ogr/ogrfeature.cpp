@@ -804,10 +804,21 @@ OGRErr OGRFeature::DeleteField( int iField )
     {
         memmove(pauFields + iField,
                 pauFields + iField + 1,
-                (nFields -1 - iField) * sizeof(void*));
+                (nFields -1 - iField) * sizeof(OGRField));
     }
-
+                
     nFields--;
+
+    OGRField *new_pauFields = (OGRField *) CPLRealloc( pauFields,
+                                nFields * sizeof(OGRField) );
+    if ( new_pauFields == NULL )
+    {
+        CPLError(CE_Failure, CPLE_OutOfMemory,
+                 "Could not allocate memory for deleting field");
+        return OGRERR_FAILURE;
+    }
+                
+    pauFields = new_pauFields;
     
     return OGRERR_NONE;
 }
