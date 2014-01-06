@@ -478,7 +478,7 @@ int OGRPGDataSource::Open( const char * pszNewName, int bUpdate,
     CPLString      osCurrentSchema;
     CPLHashSet    *hSetTables = NULL;
     int            bRet = FALSE;
-    int            bListAllTables = CSLTestBoolean(CPLGetConfigOption("PG_LIST_ALL_TABLES", "NO"));
+    int            bListAllTables = CSLTestBoolean(CPLGetConfigOption("PG_LIST_ALL_TABLES", "YES"));
     PGresult      *hResult = NULL;
 
 /* -------------------------------------------------------------------- */
