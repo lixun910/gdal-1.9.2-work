@@ -1114,10 +1114,7 @@ OGRErr OGRPGTableLayer::SetFeature( OGRFeature *poFeature )
 /* -------------------------------------------------------------------- */
     osCommand.Printf( "UPDATE %s SET ", pszSqlTableName );
 
-    //XXX: for updating in GeoDa, we don't need to update Geometry, and
-    //there is a bug when add a whole column
     /* Set the geometry */
-    /*
     if( bHasWkb )
     {
         osCommand += "WKB_GEOMETRY = ";
@@ -1210,7 +1207,6 @@ OGRErr OGRPGTableLayer::SetFeature( OGRFeature *poFeature )
         }
         bNeedComma = TRUE;
     }
-    */
     for( i = 0; i < poFeatureDefn->GetFieldCount(); i++ )
     {
         if( bNeedComma )
