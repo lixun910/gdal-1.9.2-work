@@ -66,7 +66,7 @@ OGRPGTableLayer::OGRPGTableLayer( OGRPGDataSource *poDSIn,
     nGeomType = wkbUnknown;
     bGeometryInformationSet = FALSE;
 
-    bLaunderColumnNames = TRUE;
+    bLaunderColumnNames = FALSE;
     bPreservePrecision = TRUE;
     bCopyActive = FALSE;
     bUseCopy = USE_COPY_UNSET;  // unknown
@@ -1115,6 +1115,7 @@ OGRErr OGRPGTableLayer::SetFeature( OGRFeature *poFeature )
     osCommand.Printf( "UPDATE %s SET ", pszSqlTableName );
 
     /* Set the geometry */
+    /*
     if( bHasWkb )
     {
         osCommand += "WKB_GEOMETRY = ";
@@ -1207,6 +1208,7 @@ OGRErr OGRPGTableLayer::SetFeature( OGRFeature *poFeature )
         }
         bNeedComma = TRUE;
     }
+     */
     for( i = 0; i < poFeatureDefn->GetFieldCount(); i++ )
     {
         if( bNeedComma )

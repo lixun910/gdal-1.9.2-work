@@ -704,6 +704,7 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
 /*      error result of the execute, since attempting to Set a          */
 /*      non-existing feature may be OK.                                 */
 /* -------------------------------------------------------------------- */
+    OGROCISession      *poSession = poDS->GetSession();
     char                *pszCommand;
     OGROCIStatement     oCmdStatement( poDS->GetSession() );
     unsigned int        nCommandBufSize;
@@ -716,6 +717,58 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
     
     for ( i=0 ; i < poFeature->GetFieldCount(); ++i )
     {
+/* -------------------------------------------------------------------- */
+/*      Set the geometry                                                */
+/* -------------------------------------------------------------------- */
+        /*
+        if( i==0 && poFeature->GetGeometryRef() != NULL)
+        {
+    
+            sprintf( pszCommand+nOffset, "%s=", pszGeomName);
+            nOffset += strlen(pszCommand+nOffset);
+
+            OGRGeometry *poGeometry = poFeature->GetGeometryRef();
+            char szSDO_GEOMETRY[512];
+            char szSRID[128];
+
+            if( nSRID == -1 )
+                strcpy( szSRID, "NULL" );
+            else
+                sprintf( szSRID, "%d", nSRID );
+
+            if( wkbFlatten(poGeometry->getGeometryType()) == wkbPoint )
+            {
+                OGRPoint *poPoint = (OGRPoint *) poGeometry;
+
+                if( nDimension == 2 )
+                    sprintf( szSDO_GEOMETRY,
+                         "%s(%d,%s,MDSYS.SDO_POINT_TYPE(%.16g,%.16g,0),NULL,NULL)",
+                         SDO_GEOMETRY, 2001, szSRID, 
+                         poPoint->getX(), poPoint->getY() );
+                else
+                    sprintf( szSDO_GEOMETRY, 
+                         "%s(%d,%s,MDSYS.SDO_POINT_TYPE(%.16g,%.16g,%.16g),NULL,NULL)",
+                         SDO_GEOMETRY, 3001, szSRID, 
+                         poPoint->getX(), poPoint->getY(), poPoint->getZ() );
+            }
+            else
+            {
+                int  nGType;
+
+                if( TranslateToSDOGeometry( poFeature->GetGeometryRef(), &nGType )
+                    == OGRERR_NONE )
+                    sprintf( szSDO_GEOMETRY, 
+                         "%s(%d,%s,NULL,:elem_info,:ordinates)", 
+                         SDO_GEOMETRY, nGType, szSRID );
+                else
+                    sprintf( szSDO_GEOMETRY, "NULL" );
+            }
+
+            sprintf( pszCommand+nOffset, "%s," , szSDO_GEOMETRY);
+            nOffset += strlen(pszCommand+nOffset);
+        }
+        */
+
         //if ( !poFeature->IsFieldUpdate(i) ) 
         //    continue;
         OGRFieldDefn *poFldDefn = poFeature->GetFieldDefnRef(i);
@@ -736,7 +789,7 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
         {
             int         iChar;
 
-            printf( pszCommand+nOffset, "%s='", poFldDefn->GetNameRef() );
+            sprintf( pszCommand+nOffset, "%s='", poFldDefn->GetNameRef() );
             nOffset += strlen(pszCommand+nOffset);
                 
             for( iChar = 0; pszStrValue[iChar] != '\0'; iChar++ )
@@ -771,9 +824,179 @@ OGRErr OGROCITableLayer::SetFeature( OGRFeature *poFeature )
         CPLFree( pszCommand );
         return OGRERR_NONE;
     }
+     
+     
+     CPLFree( pszCommand );
+     return OGRERR_FAILURE;
+
+    /* -------------------------------------------------------------------- */
+    /*      Prepare statement.                                              */
+    /* -------------------------------------------------------------------- */
+/*
+    OGROCIStatement oUpdate( poSession );
+    int  bHaveOrdinates = strstr(pszCommand,":ordinates") != NULL;
+    int  bHaveElemInfo = strstr(pszCommand,":elem_info") != NULL;
+    
+    if( oUpdate.Prepare( pszCommand ) != CE_None )
+    {
+        CPLFree( pszCommand );
+        return OGRERR_FAILURE;
+    }
     
     CPLFree( pszCommand );
-    return OGRERR_FAILURE;
+*/   
+    /* -------------------------------------------------------------------- */
+    /*      Bind and translate the elem_info if we have some.               */
+    /* -------------------------------------------------------------------- */
+/*
+    if( bHaveElemInfo )
+    {
+        OCIBind *hBindOrd = NULL;
+        int i;
+        OCINumber oci_number;
+        
+        // Create or clear VARRAY
+        if( hElemInfoVARRAY == NULL )
+        {
+            if( poSession->Failed(
+                                  OCIObjectNew( poSession->hEnv, poSession->hError,
+                                               poSession->hSvcCtx, OCI_TYPECODE_VARRAY,
+                                               poSession->hElemInfoTDO, (dvoid *)NULL,
+                                               OCI_DURATION_SESSION,
+                                               FALSE, (dvoid **)&hElemInfoVARRAY),
+                                  "OCIObjectNew(hElemInfoVARRAY)") )
+                return OGRERR_FAILURE;
+        }
+        else
+        {
+            sb4  nOldCount;
+            
+            OCICollSize( poSession->hEnv, poSession->hError,
+                        hElemInfoVARRAY, &nOldCount );
+            OCICollTrim( poSession->hEnv, poSession->hError,
+                        nOldCount, hElemInfoVARRAY );
+        }
+        
+        // Prepare the VARRAY of ordinate values.
+        for (i = 0; i < nElemInfoCount; i++)
+        {
+            if( poSession->Failed(
+                                  OCINumberFromInt( poSession->hError,
+                                                   (dvoid *) (panElemInfo + i),
+                                                   (uword)sizeof(int),
+                                                   OCI_NUMBER_SIGNED,
+                                                   &oci_number),
+                                  "OCINumberFromInt") )
+                return OGRERR_FAILURE;
+            
+            if( poSession->Failed(
+                                  OCICollAppend( poSession->hEnv, poSession->hError,
+                                                (dvoid *) &oci_number,
+                                                (dvoid *)0, hElemInfoVARRAY),
+                                  "OCICollAppend") )
+                return OGRERR_FAILURE;
+        }
+        
+        // Do the binding.
+        if( poSession->Failed(
+                              OCIBindByName( oUpdate.GetStatement(), &hBindOrd,
+                                            poSession->hError,
+                                            (text *) ":elem_info", (sb4) -1, (dvoid *) 0,
+                                            (sb4) 0, SQLT_NTY, (dvoid *)0, (ub2 *)0,
+                                            (ub2 *)0, (ub4)0, (ub4 *)0,
+                                            (ub4)OCI_DEFAULT),
+                              "OCIBindByName(:elem_info)") )
+            return OGRERR_FAILURE;
+        
+        if( poSession->Failed(
+                              OCIBindObject( hBindOrd, poSession->hError,
+                                            poSession->hElemInfoTDO,
+                                            (dvoid **)&hElemInfoVARRAY, (ub4 *)0,
+                                            (dvoid **)0, (ub4 *)0),
+                              "OCIBindObject(:elem_info)" ) )
+            return OGRERR_FAILURE;
+    }
+*/ 
+    /* -------------------------------------------------------------------- */
+    /*      Bind and translate the ordinates if we have some.               */
+    /* -------------------------------------------------------------------- */
+/*
+    if( bHaveOrdinates )
+    {
+        OCIBind *hBindOrd = NULL;
+        int i;
+        OCINumber oci_number;
+        
+        // Create or clear VARRAY
+        if( hOrdVARRAY == NULL )
+        {
+            if( poSession->Failed(
+                                  OCIObjectNew( poSession->hEnv, poSession->hError,
+                                               poSession->hSvcCtx, OCI_TYPECODE_VARRAY,
+                                               poSession->hOrdinatesTDO, (dvoid *)NULL,
+                                               OCI_DURATION_SESSION,
+                                               FALSE, (dvoid **)&hOrdVARRAY),
+                                  "OCIObjectNew(hOrdVARRAY)") )
+                return OGRERR_FAILURE;
+        }
+        else
+        {
+            sb4  nOldCount;
+            
+            OCICollSize( poSession->hEnv, poSession->hError,
+                        hOrdVARRAY, &nOldCount );
+            OCICollTrim( poSession->hEnv, poSession->hError,
+                        nOldCount, hOrdVARRAY );
+        }
+        
+        // Prepare the VARRAY of ordinate values.
+        for (i = 0; i < nOrdinalCount; i++)
+        {
+            if( poSession->Failed(
+                                  OCINumberFromReal( poSession->hError,
+                                                    (dvoid *) (padfOrdinals + i),
+                                                    (uword)sizeof(double),
+                                                    &oci_number),
+                                  "OCINumberFromReal") )
+                return OGRERR_FAILURE;
+            
+            if( poSession->Failed(
+                                  OCICollAppend( poSession->hEnv, poSession->hError,
+                                                (dvoid *) &oci_number,
+                                                (dvoid *)0, hOrdVARRAY),
+                                  "OCICollAppend") )
+                return OGRERR_FAILURE;
+        }
+        
+        // Do the binding.
+        if( poSession->Failed(
+                              OCIBindByName( oUpdate.GetStatement(), &hBindOrd,
+                                            poSession->hError,
+                                            (text *) ":ordinates", (sb4) -1, (dvoid *) 0,
+                                            (sb4) 0, SQLT_NTY, (dvoid *)0, (ub2 *)0, 
+                                            (ub2 *)0, (ub4)0, (ub4 *)0, 
+                                            (ub4)OCI_DEFAULT),
+                              "OCIBindByName(:ordinates)") )
+            return OGRERR_FAILURE;
+        
+        if( poSession->Failed(
+                              OCIBindObject( hBindOrd, poSession->hError, 
+                                            poSession->hOrdinatesTDO,
+                                            (dvoid **)&hOrdVARRAY, (ub4 *)0, 
+                                            (dvoid **)0, (ub4 *)0),
+                              "OCIBindObject(:ordinates)" ) )
+            return OGRERR_FAILURE;
+    }
+*/ 
+    /* -------------------------------------------------------------------- */
+    /*      Execute the insert.                                             */
+    /* -------------------------------------------------------------------- */
+/*
+    if( oUpdate.Execute( NULL ) != CE_None )
+        return OGRERR_FAILURE;
+    else
+        return OGRERR_NONE;
+*/
 }
 
 /************************************************************************/
