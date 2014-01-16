@@ -665,7 +665,7 @@ int OGRSQLiteDataSource::Open( const char * pszNewName, int bUpdateIn )
         pszName = CPLStrdup( pszNewName );
     bUpdate = bUpdateIn;
 
-    int bListAllTables = CSLTestBoolean(CPLGetConfigOption("SQLITE_LIST_ALL_TABLES", "NO"));
+    int bListAllTables = CSLTestBoolean(CPLGetConfigOption("SQLITE_LIST_ALL_TABLES", "YES"));
 
 /* -------------------------------------------------------------------- */
 /*      Try to open the sqlite database properly now.                   */
