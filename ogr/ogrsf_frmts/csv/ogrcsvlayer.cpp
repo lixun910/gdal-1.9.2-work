@@ -32,6 +32,8 @@
 #include "cpl_string.h"
 #include "cpl_csv.h"
 #include "ogr_p.h"
+#include <locale>
+#include <iostream>
 
 CPL_CVSID("$Id: ogrcsvlayer.cpp 25039 2012-10-03 21:32:21Z rcoup $");
 
@@ -354,8 +356,7 @@ OGRCSVLayer::OGRCSVLayer( const char *pszLayerNameIn,
                 /* this is only used in the test for bHasFeldNames (bug #4361) */
                 papszTmpTokens = CSLTokenizeString2( pszLine, szDelimiter, 
                                                   (CSLT_HONOURSTRINGS |
-                                                   CSLT_ALLOWEMPTYTOKENS |
-                                                   CSLT_PRESERVEQUOTES) );
+                                                   CSLT_ALLOWEMPTYTOKENS ) );
                 nFieldCount = CSLCount( papszTmpTokens );
 
                 /* initialize papszFieldTypes */
@@ -684,8 +685,34 @@ OGRFeature * OGRCSVLayer::GetNextUnfilteredFeature()
             eType = CPLGetValueType(papszTokens[iAttr]);
             if ( (papszTokens[iAttr][0] != '\0') &&
                  ( eType == CPL_VALUE_INTEGER ||
-                   eType == CPL_VALUE_REAL ) )
-                poFeature->SetField( iAttr, CPLAtof(papszTokens[iAttr]) );
+                   eType == CPL_VALUE_REAL || eType == CPL_VALUE_STRING) )
+            {
+                /*
+                if (eType == CPL_VALUE_STRING)
+                {
+                //XXX: deal with different number formats locales
+                char separator = std::use_facet< std::numpunct<char> >(std::cout.getloc()).thousands_sep();
+                char point = std::use_facet< std::numpunct<char> >(std::cout.getloc()).decimal_point();
+                // Remove Thousands Seperators
+                char* p1 = papszTokens[iAttr];
+                char* p2 = papszTokens[iAttr];
+                while (*p2) 
+                {
+                    if (*p2 != separator) 
+                        *p1++ = *p2;
+                    p2++;
+                }
+                // Replace Decimal Point if needed
+                char default_point = '.';
+                if ( point != default_point ) 
+                {
+                    char* p1 = papszTokens[iAttr];
+                    for(; *p1; ++p1) 
+                        if (*p1 == point) *p1 = default_point; 
+                }
+                }*/
+                poFeature->SetField( iAttr, CPLAtofLocale(papszTokens[iAttr]) );
+            }
         }
         else if (eFieldType != OFTString)
         {

@@ -92,6 +92,7 @@ float CPL_DLL CPLStrtofDelim(const char *, char **, char);
 /*      (ie. it will support "," or "." regardless of current locale)   */
 /* -------------------------------------------------------------------- */
 double CPL_DLL CPLAtofM(const char *);
+double CPL_DLL CPLAtofLocale(const char *);
 
 /* -------------------------------------------------------------------- */
 /*      Read a numeric value from an ASCII character string.            */
