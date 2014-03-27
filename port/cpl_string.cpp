@@ -1987,8 +1987,11 @@ CPLValueType CPLGetValueType(const char* pszValue)
     int bIsLastCharExponent = FALSE;
     int bIsReal = FALSE;
 
-    if (pszValue == NULL)
-        return CPL_VALUE_STRING;
+    // locale number
+    const char* separator = CPLGetConfigOption("GDAL_LOCALE_SEPARATOR", "");
+    const char* decimal = CPLGetConfigOption("GDAL_LOCALE_DECIMAL", ".");
+    int separator_len = strlen(separator);
+    int decimal_len = strlen(decimal);
 
     /* Skip leading + or - */
     if (*pszValue == '+' || *pszValue == '-')
@@ -2003,7 +2006,8 @@ CPLValueType CPLGetValueType(const char* pszValue)
 
     for(; *pszValue != '\0'; pszValue++ )
     {
-        if( isdigit( *pszValue))
+        if( isdigit( *pszValue) ||
+           (separator_len > 0 && strncmp(pszValue, separator, separator_len)==0))
         {
             bIsLastCharExponent = FALSE;
             /* do nothing */
@@ -2028,7 +2032,7 @@ CPLValueType CPLGetValueType(const char* pszValue)
                 return CPL_VALUE_STRING;
             bIsLastCharExponent = FALSE;
         }
-        else if ( *pszValue == '.')
+        else if ( strncmp(pszValue, decimal, strlen(decimal)) == 0)
         {
             bIsReal = TRUE;
             if (!bFoundDot && bIsLastCharExponent == FALSE)
