@@ -1157,11 +1157,37 @@ OGRErr OGRCSVLayer::CreateFeature( OGRFeature *poNewFeature )
         
         if (poFeatureDefn->GetFieldDefn(iField)->GetType() == OFTReal)
         {
-            pszEscaped = CPLStrdup(poNewFeature->GetFieldAsString(iField));
+            //pszEscaped = CPLStrdup(poNewFeature->GetFieldAsString(iField));
             /* Use point as decimal separator */
-            char* pszComma = strchr(pszEscaped, ',');
-            if (pszComma)
-                *pszComma = '.';
+            //char* pszComma = strchr(pszEscaped, ',');
+            //if (pszComma)
+            //    *pszComma = '.';
+
+            /* Use user setup number locale */
+            const char* field_string =  poNewFeature->GetFieldAsString(iField);
+            const char* decimal_point = CPLGetConfigOption("GDAL_LOCALE_DECIMAL", ".");
+            if ( decimal_point[0] != '.' ) 
+            {
+                int field_len = strlen(field_string)+1; 
+                if ( decimal_point[0] == ',' )
+                    field_len += 2; // add double quotes
+                pszEscaped = (char*) CPLMalloc(field_len);
+
+                if ( decimal_point[0] == ',' )
+                {
+                    pszEscaped[0] = '"';
+                    strcpy( pszEscaped+1, field_string );
+                    pszEscaped[field_len-2] = '"';
+                    pszEscaped[field_len-1] = '\0';
+                } else 
+                {
+                    strcpy( pszEscaped, field_string );
+                }
+
+                char* pszCDecimalPoint = strchr(pszEscaped, '.');
+                if (pszCDecimalPoint)
+                    *pszCDecimalPoint = decimal_point[0];
+            }
         }
         else
         {
