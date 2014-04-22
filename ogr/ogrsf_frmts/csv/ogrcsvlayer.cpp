@@ -1187,6 +1187,8 @@ OGRErr OGRCSVLayer::CreateFeature( OGRFeature *poNewFeature )
                 char* pszCDecimalPoint = strchr(pszEscaped, '.');
                 if (pszCDecimalPoint)
                     *pszCDecimalPoint = decimal_point[0];
+            } else {
+                pszEscaped = CPLStrdup(poNewFeature->GetFieldAsString(iField));
             }
         }
         else
