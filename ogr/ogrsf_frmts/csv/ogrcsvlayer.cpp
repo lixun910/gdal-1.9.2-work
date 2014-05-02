@@ -653,6 +653,12 @@ OGRFeature * OGRCSVLayer::GetNextUnfilteredFeature()
 
     poFeature = new OGRFeature( poFeatureDefn );
 
+
+/* -------------------------------------------------------------------- */
+/*      Get user specified decimal_point.                               */
+/* -------------------------------------------------------------------- */
+    const char* decimal_point = CPLGetConfigOption("GDAL_LOCALE_DECIMAL", ".");
+
 /* -------------------------------------------------------------------- */
 /*      Set attributes for any indicated attribute records.             */
 /* -------------------------------------------------------------------- */
@@ -687,30 +693,29 @@ OGRFeature * OGRCSVLayer::GetNextUnfilteredFeature()
                  ( eType == CPL_VALUE_INTEGER ||
                    eType == CPL_VALUE_REAL || eType == CPL_VALUE_STRING) )
             {
-                /*
-                if (eType == CPL_VALUE_STRING)
-                {
-                //XXX: deal with different number formats locales
-                char separator = std::use_facet< std::numpunct<char> >(std::cout.getloc()).thousands_sep();
-                char point = std::use_facet< std::numpunct<char> >(std::cout.getloc()).decimal_point();
-                // Remove Thousands Seperators
+                // Get number of decimals
+                int has_decimal = 0;
+                int len = 0;
+                int len_integers = 0;
+                int len_decimals = 0;
                 char* p1 = papszTokens[iAttr];
-                char* p2 = papszTokens[iAttr];
-                while (*p2) 
+                while (*p1) 
                 {
-                    if (*p2 != separator) 
-                        *p1++ = *p2;
-                    p2++;
+                    if (*p1 == decimal_point[0]) has_decimal = 1;
+                    if (has_decimal == 0) len_integers += 1;
+                    p1 += 1;
+                    len += 1;
                 }
-                // Replace Decimal Point if needed
-                char default_point = '.';
-                if ( point != default_point ) 
+                len_decimals = len - len_integers - 1; 
+                if ( len_decimals > poFeatureDefn->GetFieldDefn(iAttr)->GetPrecision() ) 
                 {
-                    char* p1 = papszTokens[iAttr];
-                    for(; *p1; ++p1) 
-                        if (*p1 == point) *p1 = default_point; 
+                    poFeatureDefn->GetFieldDefn(iAttr)->SetPrecision(len_decimals);
                 }
-                }*/
+                if ( len > poFeatureDefn->GetFieldDefn(iAttr)->GetWidth() ) 
+                {
+                    poFeatureDefn->GetFieldDefn(iAttr)->SetWidth(len);
+                }
+
                 poFeature->SetField( iAttr, CPLAtofLocale(papszTokens[iAttr]) );
             }
         }
