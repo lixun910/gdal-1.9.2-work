@@ -94,9 +94,9 @@ static FindFileTLS* CPLFinderInit()
 
         CPLPushFinderLocation( "." );
 
-        if( CPLGetConfigOption( "GDAL_DATA", NULL ) != NULL )
+        if( CPLGetConfigOption( "GEODA_GDAL_DATA", NULL ) != NULL )
         {
-            CPLPushFinderLocation( CPLGetConfigOption( "GDAL_DATA", NULL ) );
+            CPLPushFinderLocation( CPLGetConfigOption( "GEODA_GDAL_DATA", NULL ) );
         }
         else
         {

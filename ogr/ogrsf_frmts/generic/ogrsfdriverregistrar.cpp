@@ -81,9 +81,9 @@ OGRSFDriverRegistrar::OGRSFDriverRegistrar()
 /*      other mechanisms such as environment variables will have        */
 /*      been employed.                                                  */
 /* -------------------------------------------------------------------- */
-    if( CPLGetConfigOption( "GDAL_DATA", NULL ) != NULL )
+    if( CPLGetConfigOption( "GEODA_GDAL_DATA", NULL ) != NULL )
     {
-        CPLPushFinderLocation( CPLGetConfigOption( "GDAL_DATA", NULL ) );
+        CPLPushFinderLocation( CPLGetConfigOption( "GEODA_GDAL_DATA", NULL ) );
     }
     else if( pszUpdatableINST_DATA[19] != ' ' )
     {
@@ -781,11 +781,11 @@ void OGRSFDriverRegistrar::AutoLoadDrivers()
 {
     char     **papszSearchPath = NULL;
     const char *pszGDAL_DRIVER_PATH = 
-        CPLGetConfigOption( "OGR_DRIVER_PATH", NULL );
+        CPLGetConfigOption( "GEODA_OGR_DRIVER_PATH", NULL );
 
     if( pszGDAL_DRIVER_PATH == NULL )
         pszGDAL_DRIVER_PATH = 
-            CPLGetConfigOption( "GDAL_DRIVER_PATH", NULL );
+            CPLGetConfigOption( "GEODA_GDAL_DRIVER_PATH", NULL );
 
 /* -------------------------------------------------------------------- */
 /*      Where should we look for stuff?                                 */
